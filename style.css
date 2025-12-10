@@ -1,0 +1,441 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: #0a0a0a;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(0, 255, 0, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(255, 0, 0, 0.03) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0a0a 0%, #0d1117 100%);
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    box-shadow: none;
+    background: #000;
+    overflow: hidden;
+}
+
+.game-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid #00ff41;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 255, 65, 0.03) 2px,
+            rgba(0, 255, 65, 0.03) 4px
+        );
+    pointer-events: none;
+    z-index: 1;
+    box-shadow: 
+        inset 0 0 20px rgba(0, 255, 65, 0.05);
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+.ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.score-board {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #00ff41;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 12px 16px;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 2px;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+}
+
+.score-board div {
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.score-board div:last-child {
+    margin-bottom: 0;
+}
+
+.score-board .bullet-color {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.score-board span {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #ff3333;
+    border-radius: 4px;
+    padding: 48px 56px;
+    text-align: center;
+    color: #ff3333;
+    display: none;
+    pointer-events: all;
+    box-shadow: 
+        0 0 30px rgba(255, 51, 51, 0.4),
+        inset 0 0 20px rgba(255, 51, 51, 0.1);
+    backdrop-filter: blur(8px);
+    z-index: 30;
+}
+
+.game-over.show {
+    display: block;
+}
+
+.game-over h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    margin-bottom: 24px;
+    text-shadow: 0 0 15px rgba(255, 51, 51, 0.8);
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+.game-over p {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    margin-bottom: 32px;
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.game-over p span {
+    color: #00ff41;
+    font-weight: 600;
+}
+
+.leaderboard-container {
+    margin: 32px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 2px;
+}
+
+.leaderboard-container h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: #00ff41;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+.leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 255, 65, 0.05);
+    border-left: 2px solid rgba(0, 255, 65, 0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #cccccc;
+    transition: all 0.2s ease;
+    gap: 12px;
+}
+
+.leaderboard-entry:hover {
+    background: rgba(0, 255, 65, 0.1);
+    border-left-color: rgba(0, 255, 65, 0.6);
+}
+
+.leaderboard-entry .rank {
+    color: #888888;
+    font-weight: 500;
+    min-width: 24px;
+}
+
+.leaderboard-entry .player-name {
+    flex: 1;
+    color: #cccccc;
+    font-weight: 500;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.leaderboard-entry .score-value {
+    color: #00ff41;
+    font-weight: 600;
+    min-width: 80px;
+    text-align: right;
+}
+
+.leaderboard-entry.new-score {
+    background: rgba(0, 255, 65, 0.15);
+    border-left-color: #00ff41;
+    animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+.game-over button {
+    background: rgba(0, 255, 65, 0.1);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    padding: 14px 36px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.game-over button:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 25px rgba(0, 255, 65, 0.5);
+    transform: translateY(-2px);
+}
+
+.name-input-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 40;
+    pointer-events: all;
+}
+
+.name-input-modal.show {
+    display: flex;
+}
+
+.name-input-content {
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #00ff41;
+    border-radius: 4px;
+    padding: 40px 48px;
+    text-align: center;
+    color: #00ff41;
+    box-shadow: 
+        0 0 30px rgba(0, 255, 65, 0.4),
+        inset 0 0 20px rgba(0, 255, 65, 0.1);
+    backdrop-filter: blur(8px);
+    min-width: 320px;
+}
+
+.name-input-content h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.8);
+    letter-spacing: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.name-input-content p {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #cccccc;
+    font-weight: 400;
+}
+
+.name-input-content input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(0, 255, 65, 0.3);
+    border-radius: 2px;
+    color: #00ff41;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.name-input-content input:focus {
+    border-color: #00ff41;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.name-input-content input::placeholder {
+    color: rgba(0, 255, 65, 0.4);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.name-input-content button {
+    background: rgba(0, 255, 65, 0.1);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    padding: 12px 32px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.name-input-content button:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 25px rgba(0, 255, 65, 0.5);
+    transform: translateY(-2px);
+}
+
+.start-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #00ff41;
+    border-radius: 4px;
+    padding: 56px 64px;
+    text-align: center;
+    color: #00ff41;
+    pointer-events: all;
+    box-shadow: 
+        0 0 30px rgba(0, 255, 65, 0.4),
+        inset 0 0 20px rgba(0, 255, 65, 0.1);
+    backdrop-filter: blur(8px);
+    z-index: 30;
+}
+
+.start-screen.hidden {
+    display: none;
+}
+
+.start-screen h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 42px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+    letter-spacing: 3px;
+    font-weight: 700;
+}
+
+.start-screen .subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 32px;
+    color: #888888;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.start-screen .instructions {
+    margin-bottom: 32px;
+    text-align: left;
+    display: inline-block;
+}
+
+.start-screen .instructions p {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #cccccc;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+.start-screen .instructions p:last-child {
+    margin-bottom: 0;
+}
+
+.start-screen button {
+    background: rgba(0, 255, 65, 0.1);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    padding: 16px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-top: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.start-screen button:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 25px rgba(0, 255, 65, 0.5);
+    transform: translateY(-2px);
+}
+
