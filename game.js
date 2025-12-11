@@ -50,6 +50,7 @@ let enemies = [];
 let bullets = [];
 let enemyBullets = [];
 let backgroundImage = null;
+let playerImage = null;
 
 function initializeGame() {
     // Get canvas and context
@@ -170,6 +171,9 @@ function initializeGame() {
     // Load background image
     loadBackgroundImage();
     
+    // Load player image
+    loadPlayerImage();
+    
     // Initialize leaderboard display
     updateLeaderboardDisplay(0);
 }
@@ -232,8 +236,9 @@ class Star {
 // Player Ship
 class Player {
     constructor() {
-        this.width = 40;
-        this.height = 40;
+        // Adjusted size for portrait image - wider to accommodate the character
+        this.width = 60;
+        this.height = 80;
         this.x = canvas.width / 2 - this.width / 2;
         this.y = canvas.height - this.height - 20;
         this.speed = 5;
@@ -285,33 +290,44 @@ class Player {
             this.shootCooldown--;
         }
         if ((keys[' '] || keys['space']) && this.shootCooldown === 0 && !gunLocked) {
-            bullets.push(new Bullet(this.x + this.width / 2, this.y, 'player', currentDefenseTool));
+            // Bullets spawn from the rifle area (upper portion of the character)
+            const bulletX = this.x + this.width / 2;
+            const bulletY = this.y + this.height * 0.3; // Spawn from upper third where rifle is
+            bullets.push(new Bullet(bulletX, bulletY, 'player', currentDefenseTool));
             this.shootCooldown = this.maxCooldown;
         }
     }
 
     draw() {
-        // Defense system (player) - green cybersecurity theme
-        ctx.fillStyle = '#00ff41';
-        ctx.beginPath();
-        ctx.moveTo(this.x + this.width / 2, this.y);
-        ctx.lineTo(this.x, this.y + this.height);
-        ctx.lineTo(this.x + this.width / 2, this.y + this.height - 10);
-        ctx.lineTo(this.x + this.width, this.y + this.height);
-        ctx.closePath();
-        ctx.fill();
+        if (playerImage && playerImage.complete) {
+            // Draw player image with glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00ff41';
+            ctx.drawImage(playerImage, this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+        } else {
+            // Fallback: Draw simple triangle if image not loaded
+            ctx.fillStyle = '#00ff41';
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width / 2, this.y);
+            ctx.lineTo(this.x, this.y + this.height);
+            ctx.lineTo(this.x + this.width / 2, this.y + this.height - 10);
+            ctx.lineTo(this.x + this.width, this.y + this.height);
+            ctx.closePath();
+            ctx.fill();
 
-        // Glow effect
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#00ff41';
-        ctx.fill();
-        ctx.shadowBlur = 0;
+            // Glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00ff41';
+            ctx.fill();
+            ctx.shadowBlur = 0;
 
-        // System indicator
-        ctx.fillStyle = '#00ff41';
-        ctx.beginPath();
-        ctx.arc(this.x + this.width / 2, this.y + this.height, 5, 0, Math.PI * 2);
-        ctx.fill();
+            // System indicator
+            ctx.fillStyle = '#00ff41';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 2, this.y + this.height, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     getBounds() {
@@ -1032,6 +1048,24 @@ function loadBackgroundImage() {
     };
     // Set the image source - update this to your image filename
     backgroundImage.src = 'background.png';
+}
+
+// Load player image
+function loadPlayerImage() {
+    playerImage = new Image();
+    playerImage.onload = function() {
+        console.log('Player image loaded successfully');
+        // Redraw if game is already initialized
+        if (canvas && ctx && gameState === 'playing') {
+            drawGame();
+        }
+    };
+    playerImage.onerror = function() {
+        console.warn('Player image failed to load. Using fallback shape.');
+        playerImage = null;
+    };
+    // Set the image source - update this to your player image filename
+    playerImage.src = 'player.png';
 }
 
 // Initial draw
