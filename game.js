@@ -856,7 +856,7 @@ function drawGame() {
 
 // Leaderboard Functions
 function getLeaderboard() {
-    const leaderboardData = localStorage.getItem('traceTheHunterLeaderboard');
+    const leaderboardData = localStorage.getItem('casTheHunterLeaderboard');
     if (leaderboardData) {
         return JSON.parse(leaderboardData);
     }
@@ -875,7 +875,7 @@ function saveScore(newScore, playerName = 'ANONYMOUS') {
     leaderboard.sort((a, b) => b.score - a.score);
     leaderboard = leaderboard.slice(0, 5);
     
-    localStorage.setItem('traceTheHunterLeaderboard', JSON.stringify(leaderboard));
+    localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(leaderboard));
     return leaderboard;
 }
 
