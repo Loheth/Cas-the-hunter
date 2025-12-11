@@ -49,6 +49,7 @@ let player;
 let enemies = [];
 let bullets = [];
 let enemyBullets = [];
+let backgroundImage = null;
 
 function initializeGame() {
     // Get canvas and context
@@ -165,6 +166,9 @@ function initializeGame() {
     
     // Initialize stars
     init();
+    
+    // Load background image
+    loadBackgroundImage();
     
     // Initialize leaderboard display
     updateLeaderboardDisplay(0);
@@ -887,9 +891,19 @@ function updateGame() {
 }
 
 function drawGame() {
-    // Clear canvas with subtle fade for motion trails
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Draw background image if loaded
+    if (backgroundImage) {
+        // Draw background image covering the entire canvas
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        
+        // Add subtle fade overlay for motion trails
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+        // Fallback: Clear canvas with subtle fade for motion trails
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Draw stars
     stars.forEach(star => star.draw());
@@ -1002,10 +1016,32 @@ function gameLoop() {
     }
 }
 
+// Load background image
+function loadBackgroundImage() {
+    backgroundImage = new Image();
+    backgroundImage.onload = function() {
+        console.log('Background image loaded successfully');
+        // Redraw if game is already initialized
+        if (canvas && ctx) {
+            drawGame();
+        }
+    };
+    backgroundImage.onerror = function() {
+        console.warn('Background image failed to load. Using fallback gradient.');
+        backgroundImage = null;
+    };
+    // Set the image source - update this to your image filename
+    backgroundImage.src = 'background.png';
+}
+
 // Initial draw
 function init() {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (backgroundImage && backgroundImage.complete) {
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     stars.forEach(star => star.draw());
 }
 

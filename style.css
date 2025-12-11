@@ -32,7 +32,8 @@ body {
     display: block;
     width: 100%;
     height: 100%;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    /* Background image will be drawn on canvas */
+    background: #000000;
 }
 
 .ui-overlay {
@@ -527,16 +528,17 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.95);
-    border: 2px solid #00ff41;
-    border-radius: 4px;
+    background: rgba(26, 26, 46, 0.95);
+    border: 2px solid #9d4edd;
+    border-radius: 8px;
     padding: 56px 64px;
     text-align: center;
-    color: #00ff41;
+    color: #e0aaff;
     pointer-events: all;
     box-shadow: 
-        0 0 30px rgba(0, 255, 65, 0.4),
-        inset 0 0 20px rgba(0, 255, 65, 0.1);
+        0 0 40px rgba(157, 78, 221, 0.6),
+        0 0 20px rgba(100, 181, 246, 0.4),
+        inset 0 0 30px rgba(157, 78, 221, 0.2);
     backdrop-filter: blur(8px);
     z-index: 30;
 }
@@ -549,19 +551,25 @@ body {
     font-family: 'JetBrains Mono', monospace;
     font-size: 42px;
     margin-bottom: 12px;
-    text-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+    background: linear-gradient(135deg, #e0aaff 0%, #c77dff 50%, #9d4edd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(157, 78, 221, 0.8), 0 0 10px rgba(100, 181, 246, 0.6);
     letter-spacing: 3px;
     font-weight: 700;
+    filter: drop-shadow(0 0 10px rgba(157, 78, 221, 0.8));
 }
 
 .start-screen .subtitle {
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     margin-bottom: 32px;
-    color: #888888;
+    color: #64b5f6;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(100, 181, 246, 0.6);
 }
 
 .start-screen .instructions {
@@ -574,9 +582,10 @@ body {
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     margin-bottom: 10px;
-    color: #cccccc;
+    color: #e0aaff;
     font-weight: 400;
     letter-spacing: 0.3px;
+    text-shadow: 0 0 8px rgba(157, 78, 221, 0.5);
 }
 
 .start-screen .instructions p:last-child {
@@ -584,25 +593,32 @@ body {
 }
 
 .start-screen button {
-    background: rgba(0, 255, 65, 0.1);
-    border: 2px solid #00ff41;
-    color: #00ff41;
+    background: linear-gradient(135deg, rgba(157, 78, 221, 0.2) 0%, rgba(100, 181, 246, 0.2) 100%);
+    border: 2px solid #9d4edd;
+    color: #e0aaff;
     padding: 16px 40px;
     font-size: 16px;
     font-weight: 600;
     font-family: 'Inter', sans-serif;
-    border-radius: 2px;
+    border-radius: 6px;
     cursor: pointer;
     margin-top: 0;
-    transition: all 0.2s ease;
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    transition: all 0.3s ease;
+    box-shadow: 
+        0 0 20px rgba(157, 78, 221, 0.5),
+        0 0 10px rgba(100, 181, 246, 0.3);
     letter-spacing: 1px;
     text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(157, 78, 221, 0.8);
 }
 
 .start-screen button:hover {
-    background: rgba(0, 255, 65, 0.2);
-    box-shadow: 0 0 25px rgba(0, 255, 65, 0.5);
+    background: linear-gradient(135deg, rgba(157, 78, 221, 0.4) 0%, rgba(100, 181, 246, 0.4) 100%);
+    border-color: #c77dff;
+    box-shadow: 
+        0 0 30px rgba(157, 78, 221, 0.8),
+        0 0 15px rgba(100, 181, 246, 0.6);
     transform: translateY(-2px);
+    color: #ffffff;
 }
 
