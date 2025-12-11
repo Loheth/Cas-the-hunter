@@ -9,11 +9,32 @@
 <body>
     <div class="game-container">
         <div class="ui-overlay">
-            <div class="score-board">
-                <div class="score">Threats Neutralized: <span id="score">0</span></div>
-                <div class="lives">System Integrity: <span id="lives">100%</span></div>
-                <div class="timer">Time Remaining: <span id="timer">2:00</span></div>
-                <div class="bullet-color">Defense Tool: <span id="bulletColor">ANTIVIRUS</span></div>
+            <!-- Top Left: Health Bar -->
+            <div class="health-bar-container">
+                <div class="shield-icon">🛡️</div>
+                <div class="health-info">
+                    <div class="health-label">HEALTH</div>
+                    <div class="health-progress-bar">
+                        <div class="health-progress-fill" id="healthProgress"></div>
+                    </div>
+                    <div class="health-value" id="healthValue">100 HP</div>
+                    <div class="timer-display">Time: <span id="timer">2:00</span></div>
+                </div>
+            </div>
+            
+            <!-- Top Right: Score and Weapon -->
+            <div class="score-level-container">
+                <div class="score-display">SCORE: <span id="score">0</span></div>
+                <div class="weapon-display" id="weaponDisplay">ANTIVIRUS [1]</div>
+            </div>
+            
+            <!-- Top Middle: Status Messages -->
+            <div class="status-messages" id="statusMessages"></div>
+            
+            <!-- Hidden elements for game logic -->
+            <div style="display: none;">
+                <span id="lives">100%</span>
+                <span id="bulletColor">ANTIVIRUS</span>
             </div>
             <div class="name-input-modal" id="nameInputModal">
                 <div class="name-input-content">

@@ -70,6 +70,36 @@ function initializeGame() {
     timerDisplay = document.getElementById('timer');
     bulletColorDisplay = document.getElementById('bulletColor');
     
+    // Get new UI elements
+    const healthProgress = document.getElementById('healthProgress');
+    const healthValue = document.getElementById('healthValue');
+    const weaponDisplay = document.getElementById('weaponDisplay');
+    const statusMessages = document.getElementById('statusMessages');
+    const weaponSlots = document.querySelectorAll('.weapon-slot');
+    
+    // Store references for updateUI function
+    window.healthProgress = healthProgress;
+    window.healthValue = healthValue;
+    window.weaponDisplay = weaponDisplay;
+    window.statusMessages = statusMessages;
+    
+    // Add weapon selection click handlers (if weapon panel exists)
+    if (weaponSlots && weaponSlots.length > 0) {
+        weaponSlots.forEach(slot => {
+            slot.addEventListener('click', () => {
+                const weapon = slot.getAttribute('data-weapon');
+                if (weapon === 'antivirus') {
+                    currentDefenseTool = 'antivirus';
+                } else if (weapon === 'backup') {
+                    currentDefenseTool = 'backup';
+                } else if (weapon === 'firewall') {
+                    currentDefenseTool = 'firewall';
+                }
+                updateUI();
+            });
+        });
+    }
+    
     // Name input modal elements
     const nameInputModal = document.getElementById('nameInputModal');
     const playerNameInput = document.getElementById('playerNameInput');
@@ -594,13 +624,80 @@ function startGame() {
 }
 
 function updateUI() {
-    scoreDisplay.textContent = score;
-    // Convert lives (3, 2, 1) to percentage (100%, 66%, 33%)
-    const integrityPercent = Math.max(0, Math.round((lives / 3) * 100));
-    livesDisplay.textContent = `${integrityPercent}%`;
-    finalScoreDisplay.textContent = score;
+    // Update score display (top right)
+    if (scoreDisplay) {
+        scoreDisplay.textContent = score;
+    }
     
-    // Update defense tool display
+    // Update health bar (top left)
+    // Convert lives (3, 2, 1) to percentage (100%, 66%, 33%)
+    const healthPercent = Math.max(0, Math.round((lives / 3) * 100));
+    const healthHP = Math.max(0, Math.round((lives / 3) * 100));
+    
+    if (window.healthProgress) {
+        window.healthProgress.style.width = `${healthPercent}%`;
+    }
+    if (window.healthValue) {
+        window.healthValue.textContent = `${healthHP} HP`;
+    }
+    
+    // Update hidden lives display for compatibility
+    if (livesDisplay) {
+        livesDisplay.textContent = `${healthPercent}%`;
+    }
+    
+    // Update final score display
+    if (finalScoreDisplay) {
+        finalScoreDisplay.textContent = score;
+    }
+    
+    // Update weapon display (top right)
+    if (window.weaponDisplay) {
+        const toolNames = {
+            'antivirus': 'ANTIVIRUS [1]',
+            'backup': 'BACKUP [2]',
+            'firewall': 'FIREWALL [3]'
+        };
+        window.weaponDisplay.textContent = toolNames[currentDefenseTool] || 'ANTIVIRUS [1]';
+        // Set color class based on current defense tool
+        window.weaponDisplay.className = 'weapon-display ' + currentDefenseTool;
+    }
+    
+    // Update status messages (top middle)
+    if (window.statusMessages) {
+        window.statusMessages.innerHTML = ''; // Clear existing messages
+        
+        if (gunLocked) {
+            const remainingTime = Math.ceil(gunLockTimer / 60); // Convert frames to seconds
+            const message = document.createElement('div');
+            message.className = 'status-message gun-locked';
+            message.textContent = `GUN LOCKED! ${remainingTime}s`;
+            window.statusMessages.appendChild(message);
+        }
+        
+        if (gameSlowed) {
+            const remainingTime = Math.ceil(gameSlowTimer / 60); // Convert frames to seconds
+            const message = document.createElement('div');
+            message.className = 'status-message system-slowed';
+            message.textContent = `SYSTEM SLOWED! ${remainingTime}s`;
+            window.statusMessages.appendChild(message);
+        }
+    }
+    
+    // Update weapon selection panel active state (if weapon panel exists)
+    const weaponSlots = document.querySelectorAll('.weapon-slot');
+    if (weaponSlots && weaponSlots.length > 0) {
+        weaponSlots.forEach(slot => {
+            const weapon = slot.getAttribute('data-weapon');
+            if (weapon === currentDefenseTool) {
+                slot.classList.add('active');
+            } else {
+                slot.classList.remove('active');
+            }
+        });
+    }
+    
+    // Update defense tool display (hidden element for compatibility)
     if (bulletColorDisplay) {
         const toolNames = {
             'antivirus': 'ANTIVIRUS',
@@ -807,51 +904,6 @@ function drawGame() {
     bullets.forEach(bullet => bullet.draw());
     enemyBullets.forEach(bullet => bullet.draw());
     
-    // Draw current weapon display on canvas
-    if (gameState === 'playing') {
-        const toolNames = {
-            'antivirus': 'ANTIVIRUS [1]',
-            'backup': 'BACKUP UTILITY [2]',
-            'firewall': 'FIREWALL [3]'
-        };
-        const weaponText = toolNames[currentDefenseTool] || 'ANTIVIRUS [1]';
-        
-        // Set color based on current weapon
-        let weaponColor = '#ff3333'; // Default red
-        if (currentDefenseTool === 'backup') {
-            weaponColor = '#ffff00'; // Yellow
-        } else if (currentDefenseTool === 'firewall') {
-            weaponColor = '#00ff41'; // Green
-        }
-        
-        ctx.font = '16px "JetBrains Mono", monospace';
-        ctx.fillStyle = weaponColor;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = weaponColor;
-        ctx.fillText(weaponText, canvas.width - 200, 30);
-        ctx.shadowBlur = 0;
-        
-        // Display malware effect warnings
-        if (gunLocked) {
-            const remainingTime = Math.ceil(gunLockTimer / 60); // Convert frames to seconds
-            ctx.font = '14px "JetBrains Mono", monospace';
-            ctx.fillStyle = '#ffff00';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ffff00';
-            ctx.fillText(`GUN LOCKED! ${remainingTime}s`, canvas.width - 200, 55);
-            ctx.shadowBlur = 0;
-        }
-        
-        if (gameSlowed) {
-            const remainingTime = Math.ceil(gameSlowTimer / 60); // Convert frames to seconds
-            ctx.font = '14px "JetBrains Mono", monospace';
-            ctx.fillStyle = '#ff3333';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ff3333';
-            ctx.fillText(`SYSTEM SLOWED! ${remainingTime}s`, canvas.width - 200, 75);
-            ctx.shadowBlur = 0;
-        }
-    }
 }
 
 // Leaderboard Functions
@@ -945,6 +997,7 @@ function gameLoop() {
     if (gameState === 'playing') {
         updateGame();
         drawGame();
+        updateUI(); // Update UI every frame to show status messages
         requestAnimationFrame(gameLoop);
     }
 }
