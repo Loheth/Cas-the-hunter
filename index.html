@@ -89,10 +89,45 @@
                 <h1>CAS THE HUNTER</h1>
                 <p class="subtitle">Space Defense Mission</p>
                 <div class="instructions">
-                    <p>🚀 WASD / Arrow Keys: Navigate your spaceship</p>
-                    <p>⚡ SPACE: Fire weapons</p>
-                    <p>🔧 Use number keys 1, 2, 3 to switch between ammo types</p>
-                    <p>💡 Antivirus (1) for Viruses | Backup (2) for Ransomware | Firewall (3) for Worms</p>
+                    <p>WASD/Arrows: Move | SPACE: Shoot | 1/2/3: Switch Weapons</p>
+                </div>
+                <div class="enemy-guide">
+                    <h3 class="guide-title">THREAT IDENTIFICATION</h3>
+                    <div class="enemy-list">
+                        <div class="enemy-entry">
+                            <div class="enemy-visual">
+                                <img src="virus.png" alt="Virus" class="enemy-image">
+                                <div class="enemy-color-indicator" style="background: #ff3333;"></div>
+                            </div>
+                            <div class="enemy-info">
+                                <div class="enemy-name">VIRUS</div>
+                                <div class="enemy-description">Fast-moving red threat</div>
+                                <div class="enemy-kill">Kill with: <span class="weapon-name antivirus-weapon">ANTIVIRUS [1]</span></div>
+                            </div>
+                        </div>
+                        <div class="enemy-entry">
+                            <div class="enemy-visual">
+                                <img src="ransomware.png" alt="Ransomware" class="enemy-image">
+                                <div class="enemy-color-indicator" style="background: #ffff00;"></div>
+                            </div>
+                            <div class="enemy-info">
+                                <div class="enemy-name">RANSOMWARE</div>
+                                <div class="enemy-description">Slow yellow threat - locks your gun!</div>
+                                <div class="enemy-kill">Kill with: <span class="weapon-name backup-weapon">BACKUP [2]</span></div>
+                            </div>
+                        </div>
+                        <div class="enemy-entry">
+                            <div class="enemy-visual">
+                                <img src="worms.png" alt="Worm" class="enemy-image">
+                                <div class="enemy-color-indicator" style="background: #00ff41;"></div>
+                            </div>
+                            <div class="enemy-info">
+                                <div class="enemy-name">WORM</div>
+                                <div class="enemy-description">Green threat - moves in waves, splits!</div>
+                                <div class="enemy-kill">Kill with: <span class="weapon-name firewall-weapon">FIREWALL [3]</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <button id="startBtn">Launch Mission</button>
             </div>
