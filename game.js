@@ -51,6 +51,9 @@ let bullets = [];
 let enemyBullets = [];
 let backgroundImage = null;
 let playerImage = null;
+let virusImage = null;
+let ransomwareImage = null;
+let wormsImage = null;
 
 function initializeGame() {
     // Get canvas and context
@@ -173,6 +176,9 @@ function initializeGame() {
     
     // Load player image
     loadPlayerImage();
+    
+    // Load enemy images
+    loadEnemyImages();
     
     // Initialize leaderboard display
     updateLeaderboardDisplay(0);
@@ -354,26 +360,24 @@ class Enemy {
         // Set properties based on malware type
         if (this.type === 'Virus') {
             // Virus: Red Arrow/Triangle, fastest speed, straight fall
-            this.width = 30;
-            this.height = 30;
+            this.width = 55;
+            this.height = 55;
             this.color = '#ff3333';
             this.speed = Math.random() * 1.5 + 2.5; // Fastest: 2.5-4.0
             this.originalSpeed = this.speed;
             this.movementPattern = 'straight';
         } else if (this.type === 'Ransomware') {
             // Ransomware: Yellow large square, slowest speed, straight fall
-            this.width = 45;
-            this.height = 45;
+            this.width = 70;
+            this.height = 70;
             this.color = '#ffff00';
             this.speed = Math.random() * 0.5 + 0.8; // Slowest: 0.8-1.3
             this.originalSpeed = this.speed;
             this.movementPattern = 'straight';
-            this.flashCounter = 0;
-            this.isFlashing = false;
         } else if (this.type === 'Worm') {
             // Worm: Green circular or segmented shape, sine wave movement
             // If split, make smaller and slower
-            const baseSize = this.isSplit ? 20 : 35;
+            const baseSize = this.isSplit ? 40 : 60;
             this.width = baseSize;
             this.height = baseSize;
             this.color = '#00ff41';
@@ -414,15 +418,6 @@ class Enemy {
             this.y += this.speed * gameSpeed;
         }
         
-        // Update flash counter for Ransomware
-        if (this.type === 'Ransomware') {
-            this.flashCounter++;
-            // Toggle flash every 5 frames
-            if (this.flashCounter % 5 === 0) {
-                this.isFlashing = !this.isFlashing;
-            }
-        }
-        
         this.shootCooldown--;
 
         // Enemy shooting
@@ -436,45 +431,47 @@ class Enemy {
         ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
         
-        // Draw based on malware type
+        // Draw based on malware type using images
         if (this.type === 'Virus') {
-            // Virus: Red Arrow/Triangle (pointing down)
-            ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.moveTo(this.x + this.width / 2, this.y + this.height);
-            ctx.lineTo(this.x, this.y);
-            ctx.lineTo(this.x + this.width / 2, this.y + 8);
-            ctx.lineTo(this.x + this.width, this.y);
-            ctx.closePath();
-            ctx.fill();
-        } else if (this.type === 'Ransomware') {
-            // Ransomware: Yellow large square with flash effect
-            let drawColor = this.color;
-            if (this.isFlashing) {
-                // Flash effect: toggle color or outline
-                drawColor = '#ffaa00'; // Lighter yellow when flashing
+            // Virus: Use virus.png image
+            if (virusImage && virusImage.complete) {
+                ctx.drawImage(virusImage, this.x, this.y, this.width, this.height);
+            } else {
+                // Fallback: Red Arrow/Triangle (pointing down)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width / 2, this.y + this.height);
+                ctx.lineTo(this.x, this.y);
+                ctx.lineTo(this.x + this.width / 2, this.y + 8);
+                ctx.lineTo(this.x + this.width, this.y);
+                ctx.closePath();
+                ctx.fill();
             }
-            ctx.fillStyle = drawColor;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            
-            // Flash outline effect
-            if (this.isFlashing) {
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(this.x, this.y, this.width, this.height);
+        } else if (this.type === 'Ransomware') {
+            // Ransomware: Use ransomware.png image
+            if (ransomwareImage && ransomwareImage.complete) {
+                ctx.drawImage(ransomwareImage, this.x, this.y, this.width, this.height);
+            } else {
+                // Fallback: Yellow large square
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         } else if (this.type === 'Worm') {
-            // Worm: Green circular or segmented shape
-            ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Segmented effect (optional visual enhancement)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 3, 0, Math.PI * 2);
-            ctx.fill();
+            // Worm: Use worms.png image
+            if (wormsImage && wormsImage.complete) {
+                ctx.drawImage(wormsImage, this.x, this.y, this.width, this.height);
+            } else {
+                // Fallback: Green circular or segmented shape
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
         
         ctx.shadowBlur = 0;
@@ -511,28 +508,28 @@ class Bullet {
             
             // Set size and color based on weapon type
             if (this.defenseTool === 'antivirus') {
-                // Antivirus: Red small rectangle
-                this.width = 4;
-                this.height = 8;
-                this.color = '#ff3333';
+                // Antivirus: Red rectangle (larger and brighter)
+                this.width = 8;
+                this.height = 16;
+                this.color = '#ff0000';
             } else if (this.defenseTool === 'backup') {
-                // Backup Utility: Yellow rectangle/square
-                this.width = 6;
-                this.height = 6;
+                // Backup Utility: Yellow rectangle/square (larger and brighter)
+                this.width = 10;
+                this.height = 10;
                 this.color = '#ffff00';
             } else if (this.defenseTool === 'firewall') {
-                // Firewall: Green thin line (laser)
-                this.width = 2;
-                this.height = 15;
-                this.color = '#00ff41';
+                // Firewall: Green thin line (laser) - thicker and brighter
+                this.width = 4;
+                this.height = 20;
+                this.color = '#00ff00';
             }
         } else {
-            // Enemy bullets remain red
+            // Enemy bullets - larger and brighter red
             this.defenseTool = null;
             this.weaknessID = null;
-            this.width = 4;
-            this.height = 10;
-            this.color = '#ff3333';
+            this.width = 8;
+            this.height = 18;
+            this.color = '#ff0000';
         }
     }
 
@@ -555,24 +552,48 @@ class Bullet {
     }
 
     draw() {
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        // Enhanced glow effect for better visibility
+        ctx.shadowBlur = 25;
         ctx.shadowColor = this.color;
         
         // Draw based on weapon type
         if (this.defenseTool === 'firewall') {
-            // Firewall: Thin line (laser effect)
+            // Firewall: Thick line (laser effect) with strong glow
             ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = this.width;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x, this.y + this.height);
+            ctx.stroke();
+            
+            // Add extra glow layer for firewall
+            ctx.shadowBlur = 35;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.width * 0.6;
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.x, this.y + this.height);
             ctx.stroke();
         } else {
-            // Antivirus and Backup: Rectangle/square
+            // Player bullets (Antivirus, Backup) and Enemy bullets: Rectangle/square with glow
+            // Draw outer glow layer
+            ctx.shadowBlur = 30;
+            ctx.fillStyle = this.color;
             ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+            
+            // Draw inner bright core for better visibility
+            ctx.shadowBlur = 15;
+            const coreWidth = this.width * 0.7;
+            const coreHeight = this.height * 0.7;
+            ctx.fillRect(
+                this.x - coreWidth / 2, 
+                this.y + (this.height - coreHeight) / 2, 
+                coreWidth, 
+                coreHeight
+            );
         }
         
+        // Reset shadow
         ctx.shadowBlur = 0;
     }
 
@@ -912,12 +933,12 @@ function drawGame() {
         // Draw background image covering the entire canvas
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
         
-        // Add subtle fade overlay for motion trails
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        // Add darker overlay to dim background for better visibility of enemies and bullets
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
-        // Fallback: Clear canvas with subtle fade for motion trails
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        // Fallback: Clear canvas with darker fade for motion trails
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -1066,6 +1087,51 @@ function loadPlayerImage() {
     };
     // Set the image source - update this to your player image filename
     playerImage.src = 'player.png';
+}
+
+// Load enemy images
+function loadEnemyImages() {
+    // Load virus image
+    virusImage = new Image();
+    virusImage.onload = function() {
+        console.log('Virus image loaded successfully');
+        if (canvas && ctx && gameState === 'playing') {
+            drawGame();
+        }
+    };
+    virusImage.onerror = function() {
+        console.warn('Virus image failed to load. Using fallback shape.');
+        virusImage = null;
+    };
+    virusImage.src = 'virus.png';
+    
+    // Load ransomware image
+    ransomwareImage = new Image();
+    ransomwareImage.onload = function() {
+        console.log('Ransomware image loaded successfully');
+        if (canvas && ctx && gameState === 'playing') {
+            drawGame();
+        }
+    };
+    ransomwareImage.onerror = function() {
+        console.warn('Ransomware image failed to load. Using fallback shape.');
+        ransomwareImage = null;
+    };
+    ransomwareImage.src = 'ransomware.png';
+    
+    // Load worms image
+    wormsImage = new Image();
+    wormsImage.onload = function() {
+        console.log('Worms image loaded successfully');
+        if (canvas && ctx && gameState === 'playing') {
+            drawGame();
+        }
+    };
+    wormsImage.onerror = function() {
+        console.warn('Worms image failed to load. Using fallback shape.');
+        wormsImage = null;
+    };
+    wormsImage.src = 'worms.png';
 }
 
 // Initial draw
