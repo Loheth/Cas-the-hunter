@@ -35,9 +35,13 @@ let gameState = 'start'; // 'start', 'playing', 'gameOver'
 let score = 0;
 let lives = 3;
 let gameSpeed = 1;
-let timeRemaining = 60; // 1 minute in seconds
+let timeRemaining = 120; // 2 minutes in seconds
 let timerInterval = null;
-let currentBulletColor = 'red'; // 'red', 'blue', 'yellow'
+let currentDefenseTool = 'antivirus'; // 'antivirus', 'backup', 'firewall'
+let gunLocked = false; // Ransomware locks gun
+let gunLockTimer = 0; // Timer for gun lock duration
+let gameSlowed = false; // Virus slows game
+let gameSlowTimer = 0; // Timer for game slowdown duration
 
 // Game Objects (declare early for resize function)
 let stars = [];
@@ -218,36 +222,36 @@ class Player {
             this.x = Math.min(canvas.width - this.width, this.x + this.speed);
         }
 
-        // Bullet color switching (1 = red, 2 = blue, 3 = yellow)
-        let colorChanged = false;
+        // Defense tool switching (1 = antivirus, 2 = backup, 3 = firewall)
+        let toolChanged = false;
         if (keys['1']) {
-            if (currentBulletColor !== 'red') {
-                currentBulletColor = 'red';
-                colorChanged = true;
+            if (currentDefenseTool !== 'antivirus') {
+                currentDefenseTool = 'antivirus';
+                toolChanged = true;
             }
         }
         if (keys['2']) {
-            if (currentBulletColor !== 'blue') {
-                currentBulletColor = 'blue';
-                colorChanged = true;
+            if (currentDefenseTool !== 'backup') {
+                currentDefenseTool = 'backup';
+                toolChanged = true;
             }
         }
         if (keys['3']) {
-            if (currentBulletColor !== 'yellow') {
-                currentBulletColor = 'yellow';
-                colorChanged = true;
+            if (currentDefenseTool !== 'firewall') {
+                currentDefenseTool = 'firewall';
+                toolChanged = true;
             }
         }
-        if (colorChanged) {
+        if (toolChanged) {
             updateUI();
         }
 
-        // Shooting
+        // Shooting (disabled if gun is locked by ransomware)
         if (this.shootCooldown > 0) {
             this.shootCooldown--;
         }
-        if ((keys[' '] || keys['space']) && this.shootCooldown === 0) {
-            bullets.push(new Bullet(this.x + this.width / 2, this.y, 'player', currentBulletColor));
+        if ((keys[' '] || keys['space']) && this.shootCooldown === 0 && !gunLocked) {
+            bullets.push(new Bullet(this.x + this.width / 2, this.y, 'player', currentDefenseTool));
             this.shootCooldown = this.maxCooldown;
         }
     }
@@ -286,32 +290,89 @@ class Player {
     }
 }
 
-// Enemy Ship
+// Enemy Ship (Malware)
 class Enemy {
-    constructor() {
-        this.width = 35;
-        this.height = 35;
-        this.x = Math.random() * (canvas.width - this.width);
-        this.y = -this.height;
-        this.speed = Math.random() * 2 + 1;
+    constructor(options = {}) {
+        // Randomly assign one of three malware types: Virus, Ransomware, or Worm
+        // Unless specified in options (for split worms)
+        const malwareTypes = ['Virus', 'Ransomware', 'Worm'];
+        this.type = options.type || malwareTypes[Math.floor(Math.random() * malwareTypes.length)];
+        
+        // Track if this is a split worm (smaller size)
+        this.isSplit = options.isSplit || false;
+        
+        // Set properties based on malware type
+        if (this.type === 'Virus') {
+            // Virus: Red Arrow/Triangle, fastest speed, straight fall
+            this.width = 30;
+            this.height = 30;
+            this.color = '#ff3333';
+            this.speed = Math.random() * 1.5 + 2.5; // Fastest: 2.5-4.0
+            this.originalSpeed = this.speed;
+            this.movementPattern = 'straight';
+        } else if (this.type === 'Ransomware') {
+            // Ransomware: Yellow large square, slowest speed, straight fall
+            this.width = 45;
+            this.height = 45;
+            this.color = '#ffff00';
+            this.speed = Math.random() * 0.5 + 0.8; // Slowest: 0.8-1.3
+            this.originalSpeed = this.speed;
+            this.movementPattern = 'straight';
+            this.flashCounter = 0;
+            this.isFlashing = false;
+        } else if (this.type === 'Worm') {
+            // Worm: Green circular or segmented shape, sine wave movement
+            // If split, make smaller and slower
+            const baseSize = this.isSplit ? 20 : 35;
+            this.width = baseSize;
+            this.height = baseSize;
+            this.color = '#00ff41';
+            // Normal worms: original speed (1.5-2.5), Split worms: slower (0.5-1.0)
+            this.speed = this.isSplit ? (Math.random() * 0.5 + 0.5) : (Math.random() * 1 + 1.5);
+            this.originalSpeed = this.speed;
+            this.movementPattern = 'sine';
+            // Smaller amplitude for split worms
+            this.amplitude = this.isSplit ? 20 : 30;
+            this.time = options.time || 0;
+            // Set originalX with some margin for sine wave movement
+            const margin = this.amplitude + 10;
+            if (options.x !== undefined) {
+                // Use provided x position (for split worms)
+                this.originalX = options.x;
+            } else {
+                this.originalX = margin + Math.random() * (canvas.width - this.width - 2 * margin);
+            }
+        }
+        
+        // Set position (use provided position for split worms, otherwise random)
+        this.x = options.x !== undefined ? options.x : (this.type === 'Worm' ? this.originalX : Math.random() * (canvas.width - this.width));
+        this.y = options.y !== undefined ? options.y : -this.height;
         this.shootCooldown = Math.random() * 100 + 50;
         this.maxCooldown = Math.random() * 100 + 100;
-        // Randomly assign one of three colors: red, blue, or yellow
-        const colorTypes = ['red', 'blue', 'yellow'];
-        this.colorType = colorTypes[Math.floor(Math.random() * colorTypes.length)];
-        
-        // Set color based on type
-        if (this.colorType === 'red') {
-            this.color = '#ff3333';
-        } else if (this.colorType === 'blue') {
-            this.color = '#3366ff';
-        } else if (this.colorType === 'yellow') {
-            this.color = '#ffdd00';
-        }
     }
 
     update() {
-        this.y += this.speed * gameSpeed;
+        // Update movement based on pattern
+        if (this.movementPattern === 'straight') {
+            this.y += this.speed * gameSpeed;
+        } else if (this.movementPattern === 'sine') {
+            // Sine wave pattern: x = originalX + Math.sin(time) * amplitude
+            this.time += 0.1;
+            const newX = this.originalX + Math.sin(this.time) * this.amplitude;
+            // Keep within screen bounds
+            this.x = Math.max(0, Math.min(newX, canvas.width - this.width));
+            this.y += this.speed * gameSpeed;
+        }
+        
+        // Update flash counter for Ransomware
+        if (this.type === 'Ransomware') {
+            this.flashCounter++;
+            // Toggle flash every 5 frames
+            if (this.flashCounter % 5 === 0) {
+                this.isFlashing = !this.isFlashing;
+            }
+        }
+        
         this.shootCooldown--;
 
         // Enemy shooting
@@ -322,21 +383,56 @@ class Enemy {
     }
 
     draw() {
-        // Enemy ship body
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.moveTo(this.x + this.width / 2, this.y + this.height);
-        ctx.lineTo(this.x, this.y);
-        ctx.lineTo(this.x + this.width / 2, this.y + 10);
-        ctx.lineTo(this.x + this.width, this.y);
-        ctx.closePath();
-        ctx.fill();
-
-        // Glow effect
         ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
-        ctx.fill();
+        
+        // Draw based on malware type
+        if (this.type === 'Virus') {
+            // Virus: Red Arrow/Triangle (pointing down)
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width / 2, this.y + this.height);
+            ctx.lineTo(this.x, this.y);
+            ctx.lineTo(this.x + this.width / 2, this.y + 8);
+            ctx.lineTo(this.x + this.width, this.y);
+            ctx.closePath();
+            ctx.fill();
+        } else if (this.type === 'Ransomware') {
+            // Ransomware: Yellow large square with flash effect
+            let drawColor = this.color;
+            if (this.isFlashing) {
+                // Flash effect: toggle color or outline
+                drawColor = '#ffaa00'; // Lighter yellow when flashing
+            }
+            ctx.fillStyle = drawColor;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            
+            // Flash outline effect
+            if (this.isFlashing) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+            }
+        } else if (this.type === 'Worm') {
+            // Worm: Green circular or segmented shape
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Segmented effect (optional visual enhancement)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
         ctx.shadowBlur = 0;
+    }
+
+    increaseSpeed(percentage) {
+        // Increase speed by percentage (penalty for wrong weapon hit)
+        this.speed = this.originalSpeed * (1 + percentage / 100);
     }
 
     getBounds() {
@@ -349,32 +445,55 @@ class Enemy {
     }
 }
 
-// Bullet
+// Bullet (Defense Tool)
 class Bullet {
-    constructor(x, y, owner, colorType = null) {
+    constructor(x, y, owner, defenseTool = null) {
         this.x = x;
         this.y = y;
-        this.width = 4;
-        this.height = 10;
         this.speed = owner === 'player' ? 7 : 5;
         this.owner = owner;
         
-        // Set color based on owner and color type
+        // Set properties based on owner and defense tool
         if (owner === 'player') {
-            // Player bullets use the specified color type
-            this.colorType = colorType || 'red';
-            if (this.colorType === 'red') {
+            // Player bullets use the specified defense tool
+            this.defenseTool = defenseTool || 'antivirus';
+            this.weaknessID = this.getWeaknessID(this.defenseTool);
+            
+            // Set size and color based on weapon type
+            if (this.defenseTool === 'antivirus') {
+                // Antivirus: Red small rectangle
+                this.width = 4;
+                this.height = 8;
                 this.color = '#ff3333';
-            } else if (this.colorType === 'blue') {
-                this.color = '#3366ff';
-            } else if (this.colorType === 'yellow') {
-                this.color = '#ffdd00';
+            } else if (this.defenseTool === 'backup') {
+                // Backup Utility: Yellow rectangle/square
+                this.width = 6;
+                this.height = 6;
+                this.color = '#ffff00';
+            } else if (this.defenseTool === 'firewall') {
+                // Firewall: Green thin line (laser)
+                this.width = 2;
+                this.height = 15;
+                this.color = '#00ff41';
             }
         } else {
             // Enemy bullets remain red
-            this.colorType = null;
+            this.defenseTool = null;
+            this.weaknessID = null;
+            this.width = 4;
+            this.height = 10;
             this.color = '#ff3333';
         }
+    }
+
+    getWeaknessID(tool) {
+        // Map weapon to its weakness (enemy type it can destroy)
+        const weaknessMap = {
+            'antivirus': 'Virus',
+            'backup': 'Ransomware',
+            'firewall': 'Worm'
+        };
+        return weaknessMap[tool] || null;
     }
 
     update() {
@@ -389,7 +508,21 @@ class Bullet {
         ctx.fillStyle = this.color;
         ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
-        ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+        
+        // Draw based on weapon type
+        if (this.defenseTool === 'firewall') {
+            // Firewall: Thin line (laser effect)
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x, this.y + this.height);
+            ctx.stroke();
+        } else {
+            // Antivirus and Backup: Rectangle/square
+            ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+        }
+        
         ctx.shadowBlur = 0;
     }
 
@@ -423,8 +556,12 @@ function startGame() {
     score = 0;
     lives = 3;
     gameSpeed = 1;
-    timeRemaining = 60; // Reset to 1 minute
-    currentBulletColor = 'red'; // Reset to red
+    timeRemaining = 120; // Reset to 2 minutes
+    currentDefenseTool = 'antivirus'; // Reset to antivirus
+    gunLocked = false;
+    gunLockTimer = 0;
+    gameSlowed = false;
+    gameSlowTimer = 0;
     
     player = new Player();
     enemies = [];
@@ -463,16 +600,21 @@ function updateUI() {
     livesDisplay.textContent = `${integrityPercent}%`;
     finalScoreDisplay.textContent = score;
     
-    // Update bullet color display
+    // Update defense tool display
     if (bulletColorDisplay) {
-        bulletColorDisplay.textContent = currentBulletColor.toUpperCase();
-        // Set color based on current bullet color
-        if (currentBulletColor === 'red') {
-            bulletColorDisplay.style.color = '#ff3333';
-        } else if (currentBulletColor === 'blue') {
-            bulletColorDisplay.style.color = '#3366ff';
-        } else if (currentBulletColor === 'yellow') {
-            bulletColorDisplay.style.color = '#ffdd00';
+        const toolNames = {
+            'antivirus': 'ANTIVIRUS',
+            'backup': 'BACKUP UTILITY',
+            'firewall': 'FIREWALL'
+        };
+        bulletColorDisplay.textContent = toolNames[currentDefenseTool] || 'ANTIVIRUS';
+        // Set color based on current defense tool (matching bullet colors)
+        if (currentDefenseTool === 'antivirus') {
+            bulletColorDisplay.style.color = '#ff3333'; // Red
+        } else if (currentDefenseTool === 'backup') {
+            bulletColorDisplay.style.color = '#ffff00'; // Yellow
+        } else if (currentDefenseTool === 'firewall') {
+            bulletColorDisplay.style.color = '#00ff41'; // Green
         }
     }
 }
@@ -498,6 +640,21 @@ function spawnEnemy() {
 }
 
 function updateGame() {
+    // Update malware effect timers
+    if (gunLockTimer > 0) {
+        gunLockTimer--;
+        if (gunLockTimer <= 0) {
+            gunLocked = false;
+        }
+    }
+    
+    if (gameSlowTimer > 0) {
+        gameSlowTimer--;
+        if (gameSlowTimer <= 0) {
+            gameSlowed = false;
+        }
+    }
+    
     // Update stars
     stars.forEach(star => star.update());
 
@@ -516,18 +673,59 @@ function updateGame() {
             enemies.splice(enemyIndex, 1);
         }
 
-        // Check collision with player bullets (only matching colors kill enemies)
+        // Check collision with player bullets
         bullets.forEach((bullet, bulletIndex) => {
             if (checkCollision(enemy.getBounds(), bullet.getBounds())) {
-                // Only destroy enemy if bullet color matches enemy color
-                if (bullet.colorType === enemy.colorType) {
-                    enemies.splice(enemyIndex, 1);
-                    bullets.splice(bulletIndex, 1);
-                    score += 10;
-                    updateUI();
+                // Check if bullet's weaknessID matches enemy's type
+                // Antivirus -> Virus, Backup Utility -> Ransomware, Firewall -> Worm
+                if (bullet.weaknessID === enemy.type) {
+                    // Correct weapon
+                    if (enemy.type === 'Worm' && !enemy.isSplit) {
+                        // Worm splits into smaller worms instead of being destroyed
+                        const splitCount = 2; // Split into 2 smaller worms
+                        const splitX = enemy.x;
+                        const splitY = enemy.y;
+                        
+                        // Create smaller worms
+                        for (let i = 0; i < splitCount; i++) {
+                            // Spread them horizontally
+                            const offsetX = (i - (splitCount - 1) / 2) * 30;
+                            const newX = Math.max(0, Math.min(splitX + offsetX, canvas.width - 20));
+                            
+                            enemies.push(new Enemy({
+                                type: 'Worm',
+                                isSplit: true,
+                                x: newX,
+                                y: splitY,
+                                time: enemy.time // Continue sine wave pattern
+                            }));
+                        }
+                        
+                        // Remove original worm and bullet
+                        enemies.splice(enemyIndex, 1);
+                        bullets.splice(bulletIndex, 1);
+                        score += 10;
+                        updateUI();
+                    } else {
+                        // Other enemies or already-split worms: Destroy both, grant score
+                        enemies.splice(enemyIndex, 1);
+                        bullets.splice(bulletIndex, 1);
+                        score += 10;
+                        updateUI();
+                    }
                 } else {
-                    // Remove bullet but don't destroy enemy if colors don't match
+                    // Wrong weapon: Destroy bullet, increase enemy speed, apply flash for Ransomware
                     bullets.splice(bulletIndex, 1);
+                    
+                    // Apply speed penalty based on enemy type
+                    if (enemy.type === 'Virus') {
+                        enemy.increaseSpeed(50); // Speed +50%
+                    } else if (enemy.type === 'Ransomware') {
+                        enemy.increaseSpeed(30); // Speed +30%
+                        // Flash effect is already handled in enemy.update() and draw()
+                    } else if (enemy.type === 'Worm') {
+                        enemy.increaseSpeed(40); // Speed +40%
+                    }
                 }
             }
         });
@@ -536,6 +734,19 @@ function updateGame() {
         if (checkCollision(player.getBounds(), enemy.getBounds())) {
             lives--;
             enemies.splice(enemyIndex, 1);
+            
+            // Apply malware-specific consequences
+            if (enemy.type === 'Virus') {
+                // Virus slows down the game
+                gameSlowed = true;
+                gameSlowTimer = 180; // 3 seconds at 60fps (180 frames)
+            } else if (enemy.type === 'Ransomware') {
+                // Ransomware locks gun for 3 seconds
+                gunLocked = true;
+                gunLockTimer = 180; // 3 seconds at 60fps (180 frames)
+            }
+            // Worm doesn't have special consequences (just damage)
+            
             updateUI();
             if (lives <= 0) {
                 gameOver();
@@ -569,8 +780,13 @@ function updateGame() {
         }
     });
 
-    // Increase game speed over time
-    gameSpeed = 1 + score / 1000;
+    // Increase game speed over time, but apply slowdown if virus hit
+    let baseSpeed = 1 + score / 1000;
+    if (gameSlowed) {
+        gameSpeed = baseSpeed * 0.5; // Slow down to 50% speed
+    } else {
+        gameSpeed = baseSpeed;
+    }
 }
 
 function drawGame() {
@@ -590,6 +806,52 @@ function drawGame() {
     // Draw bullets
     bullets.forEach(bullet => bullet.draw());
     enemyBullets.forEach(bullet => bullet.draw());
+    
+    // Draw current weapon display on canvas
+    if (gameState === 'playing') {
+        const toolNames = {
+            'antivirus': 'ANTIVIRUS [1]',
+            'backup': 'BACKUP UTILITY [2]',
+            'firewall': 'FIREWALL [3]'
+        };
+        const weaponText = toolNames[currentDefenseTool] || 'ANTIVIRUS [1]';
+        
+        // Set color based on current weapon
+        let weaponColor = '#ff3333'; // Default red
+        if (currentDefenseTool === 'backup') {
+            weaponColor = '#ffff00'; // Yellow
+        } else if (currentDefenseTool === 'firewall') {
+            weaponColor = '#00ff41'; // Green
+        }
+        
+        ctx.font = '16px "JetBrains Mono", monospace';
+        ctx.fillStyle = weaponColor;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = weaponColor;
+        ctx.fillText(weaponText, canvas.width - 200, 30);
+        ctx.shadowBlur = 0;
+        
+        // Display malware effect warnings
+        if (gunLocked) {
+            const remainingTime = Math.ceil(gunLockTimer / 60); // Convert frames to seconds
+            ctx.font = '14px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#ffff00';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ffff00';
+            ctx.fillText(`GUN LOCKED! ${remainingTime}s`, canvas.width - 200, 55);
+            ctx.shadowBlur = 0;
+        }
+        
+        if (gameSlowed) {
+            const remainingTime = Math.ceil(gameSlowTimer / 60); // Convert frames to seconds
+            ctx.font = '14px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#ff3333';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff3333';
+            ctx.fillText(`SYSTEM SLOWED! ${remainingTime}s`, canvas.width - 200, 75);
+            ctx.shadowBlur = 0;
+        }
+    }
 }
 
 // Leaderboard Functions
@@ -695,4 +957,3 @@ function init() {
 }
 
 init();
-
