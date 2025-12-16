@@ -242,7 +242,7 @@ class Star {
 // Player Ship
 class Player {
     constructor() {
-        // Adjusted size for portrait image - wider to accommodate the character
+        // Adjusted size for character with legs
         this.width = 60;
         this.height = 80;
         this.x = canvas.width / 2 - this.width / 2;
@@ -250,21 +250,65 @@ class Player {
         this.speed = 5;
         this.shootCooldown = 0;
         this.maxCooldown = 15;
+        
+        // Animation properties - optimized for smooth animation
+        this.currentFrame = 0;
+        this.frameCounter = 0;
+        this.frameDelay = 5; // Smooth animation speed (lower = faster, 5 = very smooth)
+        this.isMoving = false;
+        this.facingDirection = 'right'; // 'left' or 'right'
+        
+        // Sprite sheet configuration - will auto-detect based on image dimensions
+        // Default: 6 columns × 2 rows (can be adjusted if your sprite sheet is different)
+        this.spriteSheetColumns = 6; // Number of columns
+        this.spriteSheetRows = 2; // Number of rows (idle, run)
+        this.framesPerAnimation = 6; // Frames per animation cycle
+        
+        // Animation frame indices (0-based)
+        // Row 0: Idle frames (0-5)
+        // Row 1: Run frames (6-11)
+        this.idleStartFrame = 0;
+        this.runStartFrame = 6;
+        
+        this.currentAnimation = 'idle';
     }
 
     update() {
+        // Track if player is moving
+        this.isMoving = false;
+        
         // Movement
         if (keys['w'] || keys['arrowup']) {
             this.y = Math.max(0, this.y - this.speed);
+            this.isMoving = true;
         }
         if (keys['s'] || keys['arrowdown']) {
             this.y = Math.min(canvas.height - this.height, this.y + this.speed);
+            this.isMoving = true;
         }
         if (keys['a'] || keys['arrowleft']) {
             this.x = Math.max(0, this.x - this.speed);
+            this.isMoving = true;
+            this.facingDirection = 'left';
         }
         if (keys['d'] || keys['arrowright']) {
             this.x = Math.min(canvas.width - this.width, this.x + this.speed);
+            this.isMoving = true;
+            this.facingDirection = 'right';
+        }
+
+        // Update animation based on movement
+        if (this.isMoving) {
+            this.currentAnimation = 'run';
+        } else {
+            this.currentAnimation = 'idle';
+        }
+        
+        // Update animation frame for smooth cycling
+        this.frameCounter++;
+        if (this.frameCounter >= this.frameDelay) {
+            this.frameCounter = 0;
+            this.currentFrame = (this.currentFrame + 1) % this.framesPerAnimation;
         }
 
         // Defense tool switching (1 = antivirus, 2 = backup, 3 = firewall)
@@ -306,10 +350,42 @@ class Player {
 
     draw() {
         if (playerImage && playerImage.complete) {
+            // Calculate which frame to draw from sprite sheet
+            let frameIndex;
+            if (this.currentAnimation === 'idle') {
+                frameIndex = this.idleStartFrame + this.currentFrame;
+            } else {
+                frameIndex = this.runStartFrame + this.currentFrame;
+            }
+            
+            // Calculate source rectangle in sprite sheet
+            const frameWidth = playerImage.width / this.spriteSheetColumns;
+            const frameHeight = playerImage.height / this.spriteSheetRows;
+            const sourceX = (frameIndex % this.spriteSheetColumns) * frameWidth;
+            const sourceY = Math.floor(frameIndex / this.spriteSheetColumns) * frameHeight;
+            
             // Draw player image with glow effect
             ctx.shadowBlur = 15;
             ctx.shadowColor = '#00ff41';
-            ctx.drawImage(playerImage, this.x, this.y, this.width, this.height);
+            
+            // Flip horizontally if facing left
+            if (this.facingDirection === 'left') {
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.drawImage(
+                    playerImage,
+                    sourceX, sourceY, frameWidth, frameHeight,
+                    -this.x - this.width, this.y, this.width, this.height
+                );
+                ctx.restore();
+            } else {
+                ctx.drawImage(
+                    playerImage,
+                    sourceX, sourceY, frameWidth, frameHeight,
+                    this.x, this.y, this.width, this.height
+                );
+            }
+            
             ctx.shadowBlur = 0;
         } else {
             // Fallback: Draw simple triangle if image not loaded
