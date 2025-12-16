@@ -340,9 +340,11 @@ class Player {
             this.shootCooldown--;
         }
         if ((keys[' '] || keys['space']) && this.shootCooldown === 0 && !gunLocked) {
-            // Bullets spawn from the rifle area (upper portion of the character)
-            const bulletX = this.x + this.width / 2;
-            const bulletY = this.y + this.height * 0.3; // Spawn from upper third where rifle is
+            // Bullets spawn from the gun barrel (upper portion of the character)
+            // Adjust X position based on facing direction to match gun barrel position
+            const gunOffsetX = this.facingDirection === 'right' ? -this.width * 0.15 : this.width * 0.15;
+            const bulletX = this.x + this.width / 2 + gunOffsetX;
+            const bulletY = this.y + this.height * 0.15; // Spawn from upper portion where gun barrel is
             bullets.push(new Bullet(bulletX, bulletY, 'player', currentDefenseTool));
             this.shootCooldown = this.maxCooldown;
         }
@@ -575,6 +577,9 @@ class Bullet {
         this.y = y;
         this.speed = owner === 'player' ? 7 : 5;
         this.owner = owner;
+        this.rotation = 0; // For rotating effects
+        this.rotationSpeed = 0.15; // Rotation speed
+        this.particleOffset = 0; // For particle animation
         
         // Set properties based on owner and defense tool
         if (owner === 'player') {
@@ -584,28 +589,32 @@ class Bullet {
             
             // Set size and color based on weapon type
             if (this.defenseTool === 'antivirus') {
-                // Antivirus: Red rectangle (larger and brighter)
-                this.width = 8;
+                // Antivirus: Red shield bullet
+                this.width = 12;
                 this.height = 16;
                 this.color = '#ff0000';
+                this.size = 12;
             } else if (this.defenseTool === 'backup') {
-                // Backup Utility: Yellow rectangle/square (larger and brighter)
+                // Backup Utility: Yellow hexagon bullet
                 this.width = 10;
                 this.height = 10;
                 this.color = '#ffff00';
+                this.size = 10;
             } else if (this.defenseTool === 'firewall') {
-                // Firewall: Green thin line (laser) - thicker and brighter
-                this.width = 4;
-                this.height = 20;
+                // Firewall: Green energy beam
+                this.width = 6;
+                this.height = 24;
                 this.color = '#00ff00';
+                this.size = 12;
             }
         } else {
-            // Enemy bullets - larger and brighter red
+            // Enemy bullets - red threat bullet
             this.defenseTool = null;
             this.weaknessID = null;
-            this.width = 8;
+            this.width = 10;
             this.height = 18;
             this.color = '#ff0000';
+            this.size = 10;
         }
     }
 
@@ -625,52 +634,321 @@ class Bullet {
         } else {
             this.y += this.speed * gameSpeed;
         }
+        // Update rotation and particle animation
+        this.rotation += this.rotationSpeed;
+        this.particleOffset += 0.2;
     }
 
     draw() {
-        // Enhanced glow effect for better visibility
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = this.color;
+        ctx.save();
+        ctx.translate(this.x, this.y);
         
-        // Draw based on weapon type
-        if (this.defenseTool === 'firewall') {
-            // Firewall: Thick line (laser effect) with strong glow
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = this.width;
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.x, this.y + this.height);
-            ctx.stroke();
-            
-            // Add extra glow layer for firewall
-            ctx.shadowBlur = 35;
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = this.width * 0.6;
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.x, this.y + this.height);
-            ctx.stroke();
+        if (this.owner === 'player' && this.defenseTool) {
+            // Player bullets - fancy cybersecurity designs
+            if (this.defenseTool === 'antivirus') {
+                // Antivirus: Red shield with rotating particles
+                this.drawShieldBullet('#ff0000', '#ff6666', '#ff3333');
+            } else if (this.defenseTool === 'backup') {
+                // Backup: Yellow hexagon with energy rings
+                this.drawHexagonBullet('#ffff00', '#ffff66', '#ffcc00');
+            } else if (this.defenseTool === 'firewall') {
+                // Firewall: Green energy beam with scanning effect
+                this.drawEnergyBeam('#00ff00', '#66ff66', '#00cc00');
+            }
         } else {
-            // Player bullets (Antivirus, Backup) and Enemy bullets: Rectangle/square with glow
-            // Draw outer glow layer
-            ctx.shadowBlur = 30;
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
-            
-            // Draw inner bright core for better visibility
-            ctx.shadowBlur = 15;
-            const coreWidth = this.width * 0.7;
-            const coreHeight = this.height * 0.7;
-            ctx.fillRect(
-                this.x - coreWidth / 2, 
-                this.y + (this.height - coreHeight) / 2, 
-                coreWidth, 
-                coreHeight
-            );
+            // Enemy bullets - red threat design
+            this.drawThreatBullet('#ff0000', '#ff6666', '#cc0000');
         }
         
-        // Reset shadow
-        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+    
+    drawShieldBullet(primaryColor, secondaryColor, accentColor) {
+        const size = this.size;
+        
+        // Outer rotating ring with particles
+        ctx.save();
+        ctx.rotate(this.rotation);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = primaryColor;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        
+        // Draw rotating particles
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI * 2 / 6) * i + this.particleOffset;
+            const radius = size * 0.6;
+            const px = Math.cos(angle) * radius;
+            const py = Math.sin(angle) * radius;
+            
+            ctx.fillStyle = secondaryColor;
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+        
+        // Shield shape (pointed top, curved bottom)
+        ctx.save();
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = primaryColor;
+        ctx.fillStyle = primaryColor;
+        ctx.beginPath();
+        // Top point
+        ctx.moveTo(0, -size * 0.6);
+        // Left curve
+        ctx.quadraticCurveTo(-size * 0.4, -size * 0.2, -size * 0.5, size * 0.3);
+        // Bottom curve
+        ctx.quadraticCurveTo(-size * 0.3, size * 0.6, 0, size * 0.7);
+        // Right side (mirror)
+        ctx.quadraticCurveTo(size * 0.3, size * 0.6, size * 0.5, size * 0.3);
+        ctx.quadraticCurveTo(size * 0.4, -size * 0.2, 0, -size * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Inner bright core
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = accentColor;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.4);
+        ctx.quadraticCurveTo(-size * 0.25, 0, 0, size * 0.5);
+        ctx.quadraticCurveTo(size * 0.25, 0, 0, -size * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        
+        // Center bright dot
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    drawHexagonBullet(primaryColor, secondaryColor, accentColor) {
+        const size = this.size;
+        const radius = size * 0.5;
+        
+        // Outer rotating hexagon ring
+        ctx.save();
+        ctx.rotate(this.rotation);
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = primaryColor;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.7;
+        
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = Math.cos(angle) * radius * 1.2;
+            const y = Math.sin(angle) * radius * 1.2;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+        
+        // Main hexagon
+        ctx.save();
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = primaryColor;
+        ctx.fillStyle = primaryColor;
+        
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        
+        // Inner hexagon
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = accentColor;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = Math.cos(angle) * radius * 0.6;
+            const y = Math.sin(angle) * radius * 0.6;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        
+        // Energy particles around hexagon
+        ctx.save();
+        ctx.rotate(-this.rotation * 1.5);
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = secondaryColor;
+        ctx.globalAlpha = 0.9;
+        for (let i = 0; i < 3; i++) {
+            const angle = (Math.PI * 2 / 3) * i + this.particleOffset;
+            const px = Math.cos(angle) * radius * 0.8;
+            const py = Math.sin(angle) * radius * 0.8;
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+        
+        // Center bright core
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    drawEnergyBeam(primaryColor, secondaryColor, accentColor) {
+        const length = this.height;
+        const width = this.width;
+        
+        // Outer glow beam
+        ctx.save();
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = primaryColor;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = width * 1.5;
+        ctx.globalAlpha = 0.6;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, -length / 2);
+        ctx.lineTo(0, length / 2);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Main beam
+        ctx.save();
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = primaryColor;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = width;
+        ctx.globalAlpha = 0.9;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, -length / 2);
+        ctx.lineTo(0, length / 2);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Inner bright core
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = width * 0.5;
+        ctx.globalAlpha = 1;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, -length / 2);
+        ctx.lineTo(0, length / 2);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Scanning particles along the beam
+        ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = secondaryColor;
+        ctx.globalAlpha = 0.8;
+        
+        const scanPos = (this.particleOffset * 20) % length - length / 2;
+        for (let i = 0; i < 3; i++) {
+            const y = scanPos + (i - 1) * 8;
+            if (y > -length / 2 && y < length / 2) {
+                ctx.beginPath();
+                ctx.arc(0, y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+        
+        // Energy nodes at ends
+        ctx.shadowBlur = 25;
+        ctx.fillStyle = primaryColor;
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, -length / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, length / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    drawThreatBullet(primaryColor, secondaryColor, accentColor) {
+        const size = this.size;
+        
+        // Outer threat ring
+        ctx.save();
+        ctx.rotate(this.rotation);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = primaryColor;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Threat particles
+        for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI * 2 / 4) * i + this.particleOffset;
+            const radius = size * 0.5;
+            const px = Math.cos(angle) * radius;
+            const py = Math.sin(angle) * radius;
+            
+            ctx.fillStyle = secondaryColor;
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+        
+        // Main threat core (diamond shape)
+        ctx.save();
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = primaryColor;
+        ctx.fillStyle = primaryColor;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.5);
+        ctx.lineTo(size * 0.4, 0);
+        ctx.lineTo(0, size * 0.5);
+        ctx.lineTo(-size * 0.4, 0);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Inner core
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = accentColor;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.3);
+        ctx.lineTo(size * 0.25, 0);
+        ctx.lineTo(0, size * 0.3);
+        ctx.lineTo(-size * 0.25, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        
+        // Center bright dot
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     getBounds() {
