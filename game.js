@@ -81,6 +81,7 @@ function initializeGame() {
     const weaponDisplay = document.getElementById('weaponDisplay');
     const statusMessages = document.getElementById('statusMessages');
     const weaponSlots = document.querySelectorAll('.weapon-slot');
+    const weaponIconBtns = document.querySelectorAll('.weapon-icon-btn');
     
     // Store references for updateUI function
     window.healthProgress = healthProgress;
@@ -93,6 +94,23 @@ function initializeGame() {
         weaponSlots.forEach(slot => {
             slot.addEventListener('click', () => {
                 const weapon = slot.getAttribute('data-weapon');
+                if (weapon === 'antivirus') {
+                    currentDefenseTool = 'antivirus';
+                } else if (weapon === 'backup') {
+                    currentDefenseTool = 'backup';
+                } else if (weapon === 'firewall') {
+                    currentDefenseTool = 'firewall';
+                }
+                updateUI();
+            });
+        });
+    }
+    
+    // Add weapon icon button click handlers (top right weapon selector)
+    if (weaponIconBtns && weaponIconBtns.length > 0) {
+        weaponIconBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const weapon = btn.getAttribute('data-weapon');
                 if (weapon === 'antivirus') {
                     currentDefenseTool = 'antivirus';
                 } else if (weapon === 'backup') {
@@ -1088,6 +1106,19 @@ function updateUI() {
                 slot.classList.add('active');
             } else {
                 slot.classList.remove('active');
+            }
+        });
+    }
+    
+    // Update weapon icon buttons active state (top right weapon selector)
+    const weaponIconBtns = document.querySelectorAll('.weapon-icon-btn');
+    if (weaponIconBtns && weaponIconBtns.length > 0) {
+        weaponIconBtns.forEach(btn => {
+            const weapon = btn.getAttribute('data-weapon');
+            if (weapon === currentDefenseTool) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
             }
         });
     }
