@@ -139,8 +139,9 @@ function initializeGame() {
         }
         
         // Save score with name
-        saveScore(score, playerName);
-        updateLeaderboardDisplay(score);
+        saveScore(score, playerName).then(() => {
+            updateLeaderboardDisplay(score);
+        });
         
         // Hide modal and show game over screen
         nameInputModal.classList.remove('show');
@@ -198,8 +199,13 @@ function initializeGame() {
     // Load enemy images
     loadEnemyImages();
     
-    // Initialize leaderboard display
-    updateLeaderboardDisplay(0);
+    // Initialize IndexedDB and leaderboard display
+    initDB().then(() => {
+        updateLeaderboardDisplay(0);
+    }).catch(() => {
+        // If IndexedDB fails, still try to display from localStorage
+        updateLeaderboardDisplay(0);
+    });
 }
 
 // Input Handling
@@ -1342,62 +1348,233 @@ function drawGame() {
     
 }
 
-// Leaderboard Functions
-function getLeaderboard() {
-    const leaderboardData = localStorage.getItem('casTheHunterLeaderboard');
-    if (leaderboardData) {
-        return JSON.parse(leaderboardData);
+// Leaderboard Functions - Using IndexedDB for long-term persistence (6+ months)
+let db = null;
+const DB_NAME = 'casTheHunterDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'leaderboard';
+
+// Initialize IndexedDB
+function initDB() {
+    return new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) {
+            console.warn('IndexedDB not supported, falling back to localStorage');
+            resolve(null);
+            return;
+        }
+
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => {
+            console.warn('IndexedDB error, falling back to localStorage');
+            resolve(null);
+        };
+
+        request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                const objectStore = database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                objectStore.createIndex('score', 'score', { unique: false });
+                objectStore.createIndex('date', 'date', { unique: false });
+            }
+        };
+    });
+}
+
+// Get leaderboard from IndexedDB (primary) or localStorage (fallback)
+async function getLeaderboard() {
+    try {
+        // Try IndexedDB first
+        if (db) {
+            return new Promise((resolve) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    const results = request.result;
+                    // Sort by score descending
+                    results.sort((a, b) => b.score - a.score);
+                    resolve(results.slice(0, 5));
+                };
+
+                request.onerror = () => {
+                    // Fallback to localStorage
+                    resolve(getLeaderboardFromLocalStorage());
+                };
+            });
+        } else {
+            // Fallback to localStorage
+            return getLeaderboardFromLocalStorage();
+        }
+    } catch (e) {
+        console.error('Error reading leaderboard:', e);
+        return getLeaderboardFromLocalStorage();
+    }
+}
+
+// Fallback: Get leaderboard from localStorage
+function getLeaderboardFromLocalStorage() {
+    try {
+        const leaderboardData = localStorage.getItem('casTheHunterLeaderboard');
+        if (leaderboardData) {
+            const parsed = JSON.parse(leaderboardData);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.error('Error reading leaderboard from localStorage:', e);
     }
     return [];
 }
 
-function saveScore(newScore, playerName = 'ANONYMOUS') {
-    let leaderboard = getLeaderboard();
-    leaderboard.push({
-        score: newScore,
-        name: playerName,
-        date: new Date().toISOString()
-    });
-    
-    // Sort by score (descending) and keep top 5
-    leaderboard.sort((a, b) => b.score - a.score);
-    leaderboard = leaderboard.slice(0, 5);
-    
-    localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(leaderboard));
-    return leaderboard;
+// Save score to IndexedDB (primary) or localStorage (fallback)
+async function saveScore(newScore, playerName = 'ANONYMOUS') {
+    try {
+        // Only add if score is greater than 0
+        if (newScore <= 0) {
+            return await getLeaderboard();
+        }
+
+        const newEntry = {
+            score: newScore,
+            name: playerName,
+            date: new Date().toISOString()
+        };
+
+        // Try IndexedDB first
+        if (db) {
+            return new Promise((resolve) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                
+                // Add new entry
+                const addRequest = store.add(newEntry);
+                
+                addRequest.onsuccess = () => {
+                    // Get all entries and keep top 5
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = () => {
+                        let leaderboard = getAllRequest.result;
+                        leaderboard.sort((a, b) => b.score - a.score);
+                        const top5 = leaderboard.slice(0, 5);
+                        
+                        // Remove entries beyond top 5
+                        if (leaderboard.length > 5) {
+                            const deleteTransaction = db.transaction([STORE_NAME], 'readwrite');
+                            const deleteStore = deleteTransaction.objectStore(STORE_NAME);
+                            const clearRequest = deleteStore.clear();
+                            
+                            clearRequest.onsuccess = () => {
+                                // Re-add only top 5 entries
+                                top5.forEach(entry => {
+                                    // Remove id before adding so it gets a new auto-increment id
+                                    const entryCopy = { ...entry };
+                                    delete entryCopy.id;
+                                    deleteStore.add(entryCopy);
+                                });
+                                
+                                // Also save to localStorage as backup
+                                localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(top5));
+                                resolve(top5);
+                            };
+                            
+                            clearRequest.onerror = () => {
+                                // If clear fails, still return top 5
+                                localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(top5));
+                                resolve(top5);
+                            };
+                        } else {
+                            // Also save to localStorage as backup
+                            localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(top5));
+                            resolve(top5);
+                        }
+                    };
+                    
+                    getAllRequest.onerror = () => {
+                        // Fallback to localStorage
+                        resolve(saveScoreToLocalStorage(newScore, playerName));
+                    };
+                };
+                
+                addRequest.onerror = () => {
+                    // Fallback to localStorage
+                    resolve(saveScoreToLocalStorage(newScore, playerName));
+                };
+            });
+        } else {
+            // Fallback to localStorage
+            return saveScoreToLocalStorage(newScore, playerName);
+        }
+    } catch (e) {
+        console.error('Error saving score:', e);
+        return saveScoreToLocalStorage(newScore, playerName);
+    }
 }
 
-function updateLeaderboardDisplay(currentScore) {
-    const leaderboard = getLeaderboard();
-    const leaderboardElement = document.getElementById('leaderboard');
-    if (!leaderboardElement) return;
-    
-    const entries = leaderboardElement.querySelectorAll('.leaderboard-entry');
-    
-    // Clear previous new-score class
-    entries.forEach(entry => entry.classList.remove('new-score'));
-    
-    // Find if current score is in leaderboard (check after save)
-    const currentScoreIndex = leaderboard.findIndex(s => s.score === currentScore);
-    
-    // Update each entry
-    entries.forEach((entry, index) => {
-        const playerName = entry.querySelector('.player-name');
-        const scoreValue = entry.querySelector('.score-value');
+// Fallback: Save score to localStorage
+function saveScoreToLocalStorage(newScore, playerName) {
+    try {
+        let leaderboard = getLeaderboardFromLocalStorage();
+        leaderboard.push({
+            score: newScore,
+            name: playerName,
+            date: new Date().toISOString()
+        });
         
-        if (leaderboard[index]) {
-            playerName.textContent = leaderboard[index].name || 'ANONYMOUS';
-            scoreValue.textContent = leaderboard[index].score.toLocaleString();
+        leaderboard.sort((a, b) => b.score - a.score);
+        leaderboard = leaderboard.slice(0, 5);
+        
+        localStorage.setItem('casTheHunterLeaderboard', JSON.stringify(leaderboard));
+        return leaderboard;
+    } catch (e) {
+        console.error('Error saving score to localStorage:', e);
+        return getLeaderboardFromLocalStorage();
+    }
+}
+
+async function updateLeaderboardDisplay(currentScore = 0) {
+    try {
+        const leaderboard = await getLeaderboard();
+        const leaderboardElement = document.getElementById('leaderboard');
+        if (!leaderboardElement) return;
+        
+        const entries = leaderboardElement.querySelectorAll('.leaderboard-entry');
+        
+        // Clear previous new-score class
+        entries.forEach(entry => entry.classList.remove('new-score'));
+        
+        // Find if current score is in leaderboard (check after save)
+        const currentScoreIndex = currentScore > 0 ? leaderboard.findIndex(s => s.score === currentScore) : -1;
+        
+        // Update each entry
+        entries.forEach((entry, index) => {
+            const playerName = entry.querySelector('.player-name');
+            const scoreValue = entry.querySelector('.score-value');
             
-            // Highlight if this is the current score (only highlight once, at its position)
-            if (currentScore > 0 && currentScoreIndex === index) {
-                entry.classList.add('new-score');
+            if (leaderboard[index]) {
+                playerName.textContent = leaderboard[index].name || 'ANONYMOUS';
+                scoreValue.textContent = leaderboard[index].score.toLocaleString();
+                
+                // Highlight if this is the current score (only highlight once, at its position)
+                if (currentScore > 0 && currentScoreIndex === index) {
+                    entry.classList.add('new-score');
+                }
+            } else {
+                playerName.textContent = '---';
+                scoreValue.textContent = '---';
             }
-        } else {
-            playerName.textContent = '---';
-            scoreValue.textContent = '---';
-        }
-    });
+        });
+    } catch (e) {
+        console.error('Error updating leaderboard display:', e);
+    }
 }
 
 function gameOver() {
@@ -1423,8 +1600,9 @@ function gameOver() {
         }, 100);
     } else {
         // Fallback if modal doesn't exist - save as anonymous
-        saveScore(score, 'ANONYMOUS');
-        updateLeaderboardDisplay(score);
+        saveScore(score, 'ANONYMOUS').then(() => {
+            updateLeaderboardDisplay(score);
+        });
         gameOverScreen.classList.add('show');
     }
 }
